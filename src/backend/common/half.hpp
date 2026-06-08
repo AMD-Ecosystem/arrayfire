@@ -79,12 +79,122 @@ struct is_same<T, T> {
 template<class T, class U>
 constexpr bool is_same_v = is_same<T, U>::value;
 
+#if defined(__HIP_RTC__)
+// hipRTC's bundled std is smaller than NVRTC's, so the integer traits the half
+// int2half SFINAE needs are provided here too (NVRTC already had them). NVRTC
+// bundles the full <type_traits>/<limits>/<cmath>, so this block is sub-gated to
+// the hipRTC path only and stays inert for the NVRTC build.
+template<class T, T v>
+struct integral_constant {
+    static constexpr T value = v;
+    using value_type         = T;
+    using type               = integral_constant;
+    constexpr operator value_type() const noexcept { return value; }
+};
+using true_type  = integral_constant<bool, true>;
+using false_type = integral_constant<bool, false>;
+
+template<class T>
+struct is_integral : false_type {};
+template<>
+struct is_integral<bool> : true_type {};
+template<>
+struct is_integral<char> : true_type {};
+template<>
+struct is_integral<signed char> : true_type {};
+template<>
+struct is_integral<unsigned char> : true_type {};
+template<>
+struct is_integral<short> : true_type {};
+template<>
+struct is_integral<unsigned short> : true_type {};
+template<>
+struct is_integral<int> : true_type {};
+template<>
+struct is_integral<unsigned int> : true_type {};
+template<>
+struct is_integral<long> : true_type {};
+template<>
+struct is_integral<unsigned long> : true_type {};
+template<>
+struct is_integral<long long> : true_type {};
+template<>
+struct is_integral<unsigned long long> : true_type {};
+
+template<class T>
+struct is_signed {
+    static constexpr bool value = (T(-1) < T(0));
+};
+
+// Minimal numeric_limits for the half conversion code (min/max for the integer
+// target types and a float specialization for the half numeric_limits base).
+// NVRTC bundles the full <limits>; hipRTC does not.
+template<class T>
+struct numeric_limits {
+    __device__ static constexpr T min() { return T(); }
+    __device__ static constexpr T max() { return T(); }
+    static constexpr int round_style = 1;  // round_to_nearest
+};
+#define AF_RTC_NLIMITS(T, MN, MX)                          \
+    template<>                                             \
+    struct numeric_limits<T> {                             \
+        __device__ static constexpr T min() { return MN; } \
+        __device__ static constexpr T max() { return MX; } \
+        static constexpr int round_style = 1;              \
+    };
+AF_RTC_NLIMITS(char, (-128), 127)
+AF_RTC_NLIMITS(signed char, (-128), 127)
+AF_RTC_NLIMITS(unsigned char, 0, 255)
+AF_RTC_NLIMITS(short, (-32768), 32767)
+AF_RTC_NLIMITS(unsigned short, 0, 65535)
+AF_RTC_NLIMITS(int, (-2147483647 - 1), 2147483647)
+AF_RTC_NLIMITS(unsigned int, 0u, 4294967295u)
+AF_RTC_NLIMITS(long long, (-9223372036854775807LL - 1), 9223372036854775807LL)
+AF_RTC_NLIMITS(unsigned long long, 0ull, 18446744073709551615ull)
+#undef AF_RTC_NLIMITS
+template<>
+struct numeric_limits<float> {
+    __device__ static constexpr float min() { return 1.17549435e-38f; }
+    __device__ static constexpr float max() { return 3.40282347e+38f; }
+    __device__ static constexpr float lowest() { return -3.40282347e+38f; }
+    __device__ static constexpr float infinity() { return __builtin_huge_valf(); }
+    static constexpr int round_style = 1;
+};
+template<>
+struct numeric_limits<double> {
+    __device__ static constexpr double min() { return 2.2250738585072014e-308; }
+    __device__ static constexpr double max() { return 1.7976931348623157e+308; }
+    __device__ static constexpr double lowest() {
+        return -1.7976931348623157e+308;
+    }
+    __device__ static constexpr double infinity() { return __builtin_huge_val(); }
+    static constexpr int round_style = 1;
+};
+
+// hipRTC's runtime header injects an isnan/isinf overload taking hip_bfloat16
+// but no float/double overload, so an unqualified std::isnan(float) in the
+// embedded device headers (math.hpp is_nan<float>) finds only the bfloat16
+// candidate. Provide the float/double overloads (device builtins) so the exact
+// match wins. NVRTC bundles the full <cmath> set.
+__device__ inline bool isnan(float v) { return __builtin_isnan(v); }
+__device__ inline bool isnan(double v) { return __builtin_isnan(v); }
+__device__ inline bool isinf(float v) { return __builtin_isinf(v); }
+__device__ inline bool isinf(double v) { return __builtin_isinf(v); }
+#endif  // __HIP_RTC__
+
 }  //  namespace std
 
 using uint16_t = unsigned short;
 // we do not include the af/compilers header in nvrtc compilations so
-// we are defining the AF_CONSTEXPR expression here
+// we are defining the AF_CONSTEXPR expression here. Under hipRTC the half ctors
+// call __float2half-style intrinsics that are not constexpr (clang rejects them
+// with -Winvalid-constexpr), so AF_CONSTEXPR must be empty there; NVRTC keeps
+// constexpr.
+#if defined(__HIP_RTC__)
+#define AF_CONSTEXPR
+#else
 #define AF_CONSTEXPR constexpr
+#endif
 #else
 #include <af/compilers.h>
 #include <algorithm>
@@ -861,7 +971,7 @@ AF_CONSTEXPR __DH__ native_half_t int2half(T value) noexcept {
 ///           value
 /// \param value The value to convert to integer
 template<std::float_round_style R, bool E, typename T>
-AF_CONSTEXPR T half2int(native_half_t value) {
+AF_CONSTEXPR __DH__ T half2int(native_half_t value) {
 #ifdef __CUDA_ARCH__
     AF_IF_CONSTEXPR(std::is_same<T, short>::value ||
                     std::is_same<T, char>::value ||
@@ -1012,6 +1122,7 @@ class alignas(2) half {
     }
 #endif
 
+
     __DH__ explicit operator float() const noexcept {
         return half2float(data_);
     }
@@ -1089,7 +1200,7 @@ class alignas(2) half {
         return *this;
     }
 
-    AF_CONSTEXPR static half infinity() {
+    AF_CONSTEXPR __DH__ static half infinity() {
         half out;
 #ifdef __CUDA_ARCH__
         out.data_ = __half_raw{0x7C00};

@@ -113,6 +113,12 @@ if(AF_BUILD_CUDA)
   list(APPEND enabled_backends "cuda")
 endif(AF_BUILD_CUDA)
 
+# The HIP backend builds as afcuda and reports AF_BACKEND_CUDA, so its tests run
+# under the same "cuda" tag/prefix.
+if(AF_BUILD_HIP)
+  list(APPEND enabled_backends "cuda")
+endif(AF_BUILD_HIP)
+
 if(AF_BUILD_OPENCL)
   list(APPEND enabled_backends "opencl")
 endif(AF_BUILD_OPENCL)

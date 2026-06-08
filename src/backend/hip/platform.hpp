@@ -1,0 +1,165 @@
+/*******************************************************
+ * Copyright (c) 2014, ArrayFire
+ * All rights reserved.
+ *
+ * This file is distributed under 3-clause BSD license.
+ * The complete license agreement can be obtained at:
+ * http://arrayfire.com/licenses/BSD-3-Clause
+ ********************************************************/
+
+#pragma once
+
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <hipblas/hipblas.h>
+#include <hipsolver/hipsolver.h>
+#include <hipsparse/hipsparse.h>
+
+#include <memory>
+#include <string>
+#include <utility>
+
+/* Library context handle types. On NVIDIA these are distinct opaque struct
+ * pointers (cublasContext* etc.). Under ROCm the corresponding handles are all
+ * `typedef void*`, so the afhip backend uses the real ROCm handle types here;
+ * the actual RAII lifetime is managed by the tag-keyed DEFINE_HIP_HANDLE types
+ * (see hip_unique_handle.hpp). These typedefs are only the value type that
+ * flows through blasHandle()/solverDnHandle()/sparseHandle() and the BLAS/
+ * solver function-pointer signatures.
+ */
+typedef hipblasHandle_t BlasHandle;
+typedef hipsparseHandle_t SparseHandle;
+typedef hipsolverHandle_t SolveHandle;
+
+#ifdef WITH_CUDNN
+struct cudnnContext;
+typedef struct cudnnContext* cudnnHandle_t;
+#endif
+
+namespace spdlog {
+class logger;
+}
+
+namespace arrayfire {
+namespace common {
+class ForgeManager;
+class MemoryManagerBase;
+}  // namespace common
+}  // namespace arrayfire
+
+using arrayfire::common::MemoryManagerBase;
+
+namespace arrayfire {
+namespace cuda {
+
+class GraphicsResourceManager;
+class PlanCache;
+
+int getBackend();
+
+std::string getDeviceInfo() noexcept;
+std::string getDeviceInfo(int device) noexcept;
+
+std::string getPlatformInfo() noexcept;
+
+std::string getDriverVersion() noexcept;
+
+// Returns the cuda runtime version as a string for the current build. If no
+// runtime is found or an error occured, the string "N/A" is returned
+std::string getCUDARuntimeVersion() noexcept;
+
+// Returns true if double is supported by the device
+bool isDoubleSupported(int device) noexcept;
+
+// Returns true if half is supported by the device
+bool isHalfSupported(int device);
+
+void devprop(char* d_name, char* d_platform, char* d_toolkit, char* d_compute);
+
+int& getMaxJitSize();
+
+int getDeviceCount();
+
+void init();
+
+int getActiveDeviceId();
+
+int getDeviceNativeId(int device);
+
+cudaStream_t getStream(int device);
+
+cudaStream_t getActiveStream();
+
+/// Returns true if the buffer on device buf_device_id can be accessed by
+/// kernels on device execution_id
+///
+/// \param[in] buf_device_id The device id of the buffer
+/// \param[in] execution_id The device where the buffer will be accessed.
+bool isDeviceBufferAccessible(int buf_device_id, int execution_id);
+
+/// Return a handle to the stream for the device.
+///
+/// \param[in] device The device of the returned stream
+/// \returns The handle to the queue/stream
+cudaStream_t getQueueHandle(int device);
+
+size_t getDeviceMemorySize(int device);
+
+size_t getHostMemorySize();
+
+size_t getL2CacheSize(const int device);
+
+// Returns int[3] of maxGridSize
+const int* getMaxGridSize(const int device);
+
+unsigned getMemoryBusWidth(const int device);
+
+// maximum nr of threads the device really can run in parallel, without
+// scheduling
+unsigned getMaxParallelThreads(const int device);
+
+unsigned getMultiProcessorCount(const int device);
+
+int setDevice(int device);
+
+void sync(int device);
+
+// Returns true if the AF_SYNCHRONIZE_CALLS environment variable is set to 1
+bool synchronize_calls();
+
+const cudaDeviceProp& getDeviceProp(const int device);
+
+std::pair<int, int> getComputeCapability(const int device);
+
+bool& evalFlag();
+
+MemoryManagerBase& memoryManager();
+
+MemoryManagerBase& pinnedMemoryManager();
+
+void setMemoryManager(std::unique_ptr<MemoryManagerBase> mgr);
+
+void resetMemoryManager();
+
+void setMemoryManagerPinned(std::unique_ptr<MemoryManagerBase> mgr);
+
+void resetMemoryManagerPinned();
+
+arrayfire::common::ForgeManager& forgeManager();
+
+GraphicsResourceManager& interopManager();
+
+PlanCache& fftManager();
+
+BlasHandle blasHandle();
+
+#ifdef WITH_CUDNN
+cudnnHandle_t nnHandle();
+#endif
+
+SolveHandle solverDnHandle();
+
+SparseHandle sparseHandle();
+
+}  // namespace cuda
+}  // namespace arrayfire

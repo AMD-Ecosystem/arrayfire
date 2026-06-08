@@ -92,6 +92,7 @@ include(config_ccache)
 
 option(AF_BUILD_CPU      "Build ArrayFire with a CPU backend"        ON)
 option(AF_BUILD_CUDA     "Build ArrayFire with a CUDA backend"       ${CUDA_FOUND})
+option(AF_BUILD_HIP      "Build ArrayFire with a HIP/ROCm backend"   OFF)
 option(AF_BUILD_OPENCL   "Build ArrayFire with a OpenCL backend"     ${OpenCL_FOUND})
 option(AF_BUILD_ONEAPI   "Build ArrayFire with a oneAPI backend"     OFF)
 option(AF_BUILD_UNIFIED  "Build Backend-Independent ArrayFire API"   ON)
@@ -189,6 +190,30 @@ if(AF_BUILD_CUDA)
   else()
     message(WARNING "No CUDA support")
   endif()
+endif()
+
+# The HIP/ROCm backend (src/backend/hip) is a sibling of the CUDA backend cloned
+# from it; it builds as library `afcuda` and reports AF_BACKEND_CUDA so the
+# unified dispatcher and the test suite treat it as the CUDA-model backend on
+# AMD. It is therefore mutually exclusive with AF_BUILD_CUDA.
+if(AF_BUILD_HIP)
+  if(AF_BUILD_CUDA)
+    message(FATAL_ERROR
+      "AF_BUILD_HIP and AF_BUILD_CUDA are mutually exclusive: the HIP backend "
+      "builds as the CUDA-identity backend (afcuda).")
+  endif()
+  if(NOT DEFINED CMAKE_HIP_ARCHITECTURES OR CMAKE_HIP_ARCHITECTURES STREQUAL "")
+    # Default the target GPU arch when the caller has not set one; override with
+    # -DCMAKE_HIP_ARCHITECTURES=<arch> (e.g. gfx90a, gfx942, gfx1100) as needed.
+    set(CMAKE_HIP_ARCHITECTURES "gfx90a")
+  endif()
+  check_language(HIP)
+  if(CMAKE_HIP_COMPILER)
+    enable_language(HIP)
+  else()
+    message(FATAL_ERROR "No HIP support (set CMAKE_HIP_COMPILER, e.g. /opt/rocm/llvm/bin/clang++)")
+  endif()
+  find_package(hip REQUIRED)
 endif()
 
 af_deprecate(BUILD_CPU             AF_BUILD_CPU)
@@ -384,6 +409,7 @@ add_subdirectory(src/api/cpp)
 
 conditional_directory(AF_BUILD_CPU     src/backend/cpu)
 conditional_directory(AF_BUILD_CUDA    src/backend/cuda)
+conditional_directory(AF_BUILD_HIP     src/backend/hip)
 conditional_directory(AF_BUILD_ONEAPI  src/backend/oneapi)
 conditional_directory(AF_BUILD_OPENCL  src/backend/opencl)
 conditional_directory(AF_BUILD_UNIFIED src/api/unified)
