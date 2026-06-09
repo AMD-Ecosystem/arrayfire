@@ -51,7 +51,11 @@
 
 #include <algorithm>
 #include <array>
+#if defined(_WIN32)
+#include <filesystem>
+#else
 #include <dirent.h>
+#endif
 
 #include <cctype>
 #include <chrono>
@@ -296,6 +300,19 @@ Module compileModule(const string &moduleKey, span<const string> sources,
     const string clangResourceOpt = [&]() -> string {
         const string base = rocmRoot + "/lib/llvm/lib/clang";
         string ver;
+#if defined(_WIN32)
+        try {
+            for (const auto &entry :
+                 std::filesystem::directory_iterator(
+                     base, std::filesystem::directory_options::skip_permission_denied)) {
+                const string name = entry.path().filename().string();
+                if (!name.empty() && name[0] != '.') {
+                    ver = name;
+                    break;
+                }
+            }
+        } catch (const std::filesystem::filesystem_error &) {}
+#else
         if (DIR *d = opendir(base.c_str())) {
             for (dirent *e; (e = readdir(d)) != nullptr;) {
                 if (e->d_name[0] != '.') {
@@ -305,6 +322,7 @@ Module compileModule(const string &moduleKey, span<const string> sources,
             }
             closedir(d);
         }
+#endif
         if (!ver.empty()) return "-isystem" + base + "/" + ver + "/include";
         return "-isystem" + base + "/include";
     }();
