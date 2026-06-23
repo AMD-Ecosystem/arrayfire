@@ -512,6 +512,13 @@ set_target_properties(afcuda PROPERTIES
   CXX_STANDARD 17
   CXX_STANDARD_REQUIRED ON)
 
+# Force shared-library link mode on Windows: the clang driver does not always
+# infer the DLL subsystem for this backend (seen with the Visual Studio
+# generator selecting clang), which surfaces as a missing-subsystem link error.
+if(WIN32)
+  target_link_options(afcuda PRIVATE "-shared")
+endif()
+
 # Force-include hip_compat.h on every TU (MPPI force-include pattern) so the
 # cudaXxx / CUxxx / cuComplex aliases precede any use regardless of per-file
 # include order. The host .cpp of this backend call the CUDA runtime/driver API

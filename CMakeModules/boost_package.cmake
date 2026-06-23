@@ -60,6 +60,14 @@ if(TARGET Boost::boost)
       list(APPEND BOOST_DEFINITIONS "BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED")
   endif()
 
+  # On Windows the Boost.Stacktrace windbg backend pulls in dbgeng/Windows API
+  # declarations that clash with arrayfire's own Windows includes unless Boost
+  # includes <windows.h> directly. Without this the default Windbg stacktrace
+  # fails to compile and users must fall back to AF_STACKTRACE_TYPE=None.
+  if(WIN32)
+    list(APPEND BOOST_DEFINITIONS "BOOST_USE_WINDOWS_H")
+  endif()
+
   # NOTE: BOOST_CHRONO_HEADER_ONLY is required for Windows because otherwise it
   # will try to link with libboost-chrono.
   set_target_properties(Boost::boost PROPERTIES INTERFACE_COMPILE_DEFINITIONS
