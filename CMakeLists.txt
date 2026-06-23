@@ -202,11 +202,8 @@ if(AF_BUILD_HIP)
       "AF_BUILD_HIP and AF_BUILD_CUDA are mutually exclusive: the HIP backend "
       "builds as the CUDA-identity backend (afcuda).")
   endif()
-  if(NOT DEFINED CMAKE_HIP_ARCHITECTURES OR CMAKE_HIP_ARCHITECTURES STREQUAL "")
-    # Default the target GPU arch when the caller has not set one; override with
-    # -DCMAKE_HIP_ARCHITECTURES=<arch> (e.g. gfx90a, gfx942, gfx1100) as needed.
-    set(CMAKE_HIP_ARCHITECTURES "gfx90a")
-  endif()
+  # No CMAKE_HIP_ARCHITECTURES pin: enable_language(HIP) below auto-detects the
+  # host GPU(s) and errors if none is found; pass -DCMAKE_HIP_ARCHITECTURES to override.
   check_language(HIP)
   if(CMAKE_HIP_COMPILER)
     enable_language(HIP)
