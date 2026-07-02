@@ -196,6 +196,11 @@ endif()
 # from it; it builds as library `afcuda` and reports AF_BACKEND_CUDA so the
 # unified dispatcher and the test suite treat it as the CUDA-model backend on
 # AMD. It is therefore mutually exclusive with AF_BUILD_CUDA.
+#
+# Requires ROCm 7.0 or newer. The backend uses the hipBLAS hipblasGemmEx API
+# taking hipDataType and hipblasComputeType_t, introduced in hipBLAS 3 (ROCm
+# 7.0); ROCm 6.x ships hipBLAS 2 whose GemmEx takes hipblasDatatype_t instead
+# and will not compile.
 if(AF_BUILD_HIP)
   if(AF_BUILD_CUDA)
     message(FATAL_ERROR
