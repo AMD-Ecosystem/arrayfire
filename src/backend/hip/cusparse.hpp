@@ -15,7 +15,7 @@
 // (aliased to hipsparse* by nvrtc_shims/cusparse_v2.h). This header therefore
 // drops the getCusparsePlugin() indirection the CUDA cusparse.hpp carries.
 //
-// The descriptor RAII is the amgcl void*-aliasing fix: hipSPARSE typedefs
+// The descriptor RAII works around the same void* aliasing: hipSPARSE typedefs
 // hipsparseDnVecDescr_t and hipsparseDnMatDescr_t (and hipsparseHandle_t /
 // hipsparseMatDescr_t) all to `void*`, so the shared type-keyed
 // common::unique_handle<T> / DEFINE_HANDLER(T,...) machinery would redefine the

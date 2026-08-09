@@ -16,7 +16,7 @@
 // hipblasHandle_t is `void*` (so are hipsolverHandle_t and the hipsparse
 // handles/descriptors), which collides under the type-keyed common DEFINE_HANDLER
 // the moment a TU pulls two of these headers. Use the tag-keyed HIP handle
-// instead (see hip_unique_handle.hpp, amgcl void*-aliasing fault class).
+// instead (see hip_unique_handle.hpp).
 DEFINE_HIP_HANDLE(BlasHandleRAII, hipblasHandle_t, hipblasCreate,
                   hipblasDestroy);
 

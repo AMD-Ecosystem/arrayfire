@@ -15,10 +15,10 @@ namespace kernel {
 // the mask is a 64-bit integer (the active wavefront is up to 64 lanes on CDNA),
 // so the CUDA literal 0xffffffff fails to compile. Use a 64-bit all-lanes mask on
 // HIP; the value is keyed on the platform, not the wave width, so it is correct
-// on wave64 (gfx90a) and wave32 (gfx11xx) alike. (AutoDock-GPU fault class.) HIP
-// always provides the _sync intrinsics, so drop the legacy CUDA_VERSION<9000
-// fallbacks on this backend. CUDA keeps the 32-bit literal byte-for-byte (this
-// file is only compiled on the AMD backend).
+// on wave64 (gfx90a) and wave32 (gfx11xx) alike. HIP always provides the _sync
+// intrinsics, so drop the legacy CUDA_VERSION<9000 fallbacks on this backend.
+// CUDA keeps the 32-bit literal byte-for-byte (this file is only compiled on
+// the AMD backend).
 #if defined(__HIP_PLATFORM_AMD__)
 constexpr unsigned long long FULL_MASK = 0xffffffffffffffffULL;
 #else

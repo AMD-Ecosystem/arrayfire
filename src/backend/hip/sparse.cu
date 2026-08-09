@@ -13,9 +13,10 @@
 // the legacy Xcsrsort / Xcsr2coo / Xcoo2csr / Xcoosort coordinate-conversion and
 // sort surface, and the COO<->dense arrayfire kernels. The CUDA backend reaches
 // these through the dlopen plugin (_.cusparseXxx); on HIP we link roc::hipsparse
-// and call the hipsparse functions directly. Descriptor RAII is tag-keyed (the
-// amgcl void* fix). matB in DenseToStorage is created raw (its pointers are
-// re-set after the size query) and explicitly destroyed before returning.
+// and call the hipsparse functions directly. Descriptor RAII is tag-keyed
+// because the descriptor types alias one void*. matB in DenseToStorage is
+// created raw (its pointers are re-set after the size query) and explicitly
+// destroyed before returning.
 
 #include <sparse.hpp>
 

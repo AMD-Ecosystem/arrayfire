@@ -55,10 +55,10 @@
 #include <thread>
 #include <type_traits>
 
-// hipsparseHandle_t is void* (the amgcl void*-aliasing fault class); use the
-// tag-keyed RAII so it does not collide with the other void* handles. The CUDA
-// backend defines this through cusparse.hpp; on HIP that header is deferred, so
-// the handle is declared here directly.
+// hipsparseHandle_t is void*, as are the other ROCm library handles; use the
+// tag-keyed RAII so it does not collide with them. The CUDA backend defines
+// this through cusparse.hpp; on HIP that header is deferred, so the handle is
+// declared here directly.
 DEFINE_HIP_HANDLE(SparseHandleRAII, hipsparseHandle_t, hipsparseCreate,
                   hipsparseDestroy);
 

@@ -153,7 +153,7 @@ __DH__ static To scalar(Ti real, Ti imag) {
 // HIP does not define __CUDA_ARCH__ during device compilation (it uses
 // __HIP_DEVICE_COMPILE__); without including it here the host maxval/minval
 // (which are not __device__) get selected in device code -> "reference to
-// __host__ function in __device__ function" (cudaKDTree/gsplat fault class).
+// __host__ function in __device__ function".
 // maxval/minval are defined __host__ __device__ (NOT split on __CUDA_ARCH__/
 // __HIP_DEVICE_COMPILE__): the CUDA backend gates a host numeric_limits path vs
 // a device intrinsic path, but on HIP that split breaks host launchers that call
@@ -288,8 +288,8 @@ inline __DH__ auto is_nan<double>(const double &val) -> bool {
 }
 
 // The __half specialization must carry the same __host__ __device__ attributes
-// as the primary (gsplat target-attribute rule); guard the device-only
-// __hisnan intrinsic on the device pass and fall back to a float test on host.
+// as the primary template; guard the device-only __hisnan intrinsic on the
+// device pass and fall back to a float test on host.
 template<>
 inline __DH__ auto is_nan<__half>(const __half &val) -> bool {
 #if defined(__HIP_DEVICE_COMPILE__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530)
@@ -301,8 +301,8 @@ inline __DH__ auto is_nan<__half>(const __half &val) -> bool {
 
 // The cfloat/cdouble specializations must carry the SAME __host__ __device__
 // attributes as the primary template (clang/HIP enforces this where nvcc does
-// not -- the gsplat target-attribute rule). isnan over the float/double parts
-// goes through the half-precision-free std::isnan so it resolves on both passes.
+// not). isnan over the float/double parts goes through the half-precision-free
+// std::isnan so it resolves on both passes.
 template<>
 inline __DH__ auto is_nan<cfloat>(const cfloat &in) -> bool {
     return std::isnan(real(in)) || std::isnan(imag(in));

@@ -12,17 +12,19 @@
 // HIP descriptor-handle RAII that is keyed on a distinguishing TAG type rather
 // than on the raw handle type.
 //
-// Why this exists (the amgcl void*-aliasing fault class): the shared
-// common::unique_handle<T> / DEFINE_HANDLER(T,...) machinery specializes
-// common::ResourceHandler<T>, keyed on the C handle type T. In cuBLAS/cuSOLVER/
-// cuSPARSE those handle types are DISTINCT opaque struct pointers, so each
-// DEFINE_HANDLER produces a distinct ResourceHandler specialization. Under
-// ROCm, hipblasHandle_t, hipsolverHandle_t, hipsparseHandle_t,
-// hipsparseMatDescr_t, hipsparseDnVecDescr_t and hipsparseDnMatDescr_t are ALL
-// `typedef void*` (hipblas.h / hipsolver.h / hipsparse-types.h), so every
-// DEFINE_HANDLER over them would redefine the SAME ResourceHandler<void*>
-// ("class member cannot be redeclared") the moment a single TU pulls two of
-// these headers (solve.cu pulls cublas+cusolver; platform.cpp pulls all three).
+// Why this exists: under ROCm several logically distinct handle types are the
+// same `void*` typedef, so anything keyed on the handle type cannot tell them
+// apart. The shared common::unique_handle<T> / DEFINE_HANDLER(T,...) machinery
+// specializes common::ResourceHandler<T>, keyed on the C handle type T. In
+// cuBLAS/cuSOLVER/cuSPARSE those handle types are DISTINCT opaque struct
+// pointers, so each DEFINE_HANDLER produces a distinct ResourceHandler
+// specialization. Under ROCm, hipblasHandle_t, hipsolverHandle_t,
+// hipsparseHandle_t, hipsparseMatDescr_t, hipsparseDnVecDescr_t and
+// hipsparseDnMatDescr_t are ALL `typedef void*` (hipblas.h / hipsolver.h /
+// hipsparse-types.h), so every DEFINE_HANDLER over them would redefine the
+// SAME ResourceHandler<void*> ("class member cannot be redeclared") the moment
+// a single TU pulls two of these headers (solve.cu pulls cublas+cusolver;
+// platform.cpp pulls all three).
 //
 // Fix: a HIP-only handle template carrying its own create/destroy as a policy
 // and disambiguated by a per-logical-handle TAG type, so two void* handles get

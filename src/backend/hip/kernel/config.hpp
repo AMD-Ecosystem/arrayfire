@@ -24,7 +24,7 @@ static const uint REPEAT            = 32;
 // host code that needs the runtime value should query
 // hipGetDeviceProperties(...).warpSize. Never hardcode 32 in warp-staged kernels
 // (reduce/scan/ireduce) -- use kWarpSize so the staging is correct on both wave
-// widths. (PORTING_GUIDE warp-size fault class.)
+// widths.
 #if defined(__HIP_PLATFORM_AMD__)
 #if defined(__GFX9__)
 static constexpr int kWarpSize = 64;  // CDNA: gfx90a, gfx94x

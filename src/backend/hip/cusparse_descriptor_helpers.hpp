@@ -13,9 +13,9 @@
 // descriptors through common::make_handle<cusparseXxxDescr_t> (type-keyed); on
 // HIP the descriptor types are aliasing void* typedefs, so the tag-keyed
 // TaggedHandle RAII from cusparse.hpp (SparseSpMatRAII / SparseDnVecRAII /
-// SparseDnMatRAII) is used instead (the amgcl void*-aliasing fix). The returned
-// TaggedHandle implicitly converts to the raw hipsparse*Descr_t when passed to
-// the hipSPARSE SpMV/SpMM/conversion calls.
+// SparseDnMatRAII) is used instead, so the aliasing types stay distinct at
+// compile time. The returned TaggedHandle implicitly converts to the raw
+// hipsparse*Descr_t when passed to the hipSPARSE SpMV/SpMM/conversion calls.
 
 #if defined(AF_USE_NEW_CUSPARSE_API)
 // CUDA Toolkit 10.0 or later
