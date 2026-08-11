@@ -212,17 +212,14 @@ inline __device__ T get_pixel(unsigned x, unsigned y, const float ori,
     return image.ptr[x * image.dims[0] + y];
 }
 
-inline __device__ int lookup(const int n, cudaTextureObject_t tex) {
-    return tex1Dfetch<int>(tex, n);
-}
+inline __device__ int lookup(const int n, const int* lut) { return lut[n]; }
 
 template<typename T>
 __global__ void extract_orb(unsigned* desc_out, const unsigned n_feat,
                             float* x_in_out, float* y_in_out,
                             const float* ori_in, float* size_out,
                             CParam<T> image, const float scl,
-                            const unsigned patch_size,
-                            cudaTextureObject_t luTable) {
+                            const unsigned patch_size, const int* luTable) {
     unsigned f = blockDim.x * blockIdx.x + threadIdx.x;
 
     if (f < n_feat) {

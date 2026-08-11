@@ -110,8 +110,8 @@ inline __device__ double abs_diff(const double x, const double y) {
     return fabs(x - y);
 }
 
-inline __device__ int lookup(const int n, cudaTextureObject_t tex) {
-    return (int)tex1Dfetch<unsigned char>(tex, n);
+inline __device__ int lookup(const int n, const unsigned char *lut) {
+    return (int)lut[n];
 }
 
 template<typename T, int arc_length>
@@ -119,7 +119,7 @@ __device__ void locate_features_core(T *local_image, float *score,
                                      const unsigned idim0, const unsigned idim1,
                                      const float thr, int x, int y,
                                      const unsigned edge,
-                                     cudaTextureObject_t luTable) {
+                                     const unsigned char *luTable) {
     if (x >= idim0 - edge || y >= idim1 - edge) return;
 
     score[y * idim0 + x] = 0.f;
@@ -201,7 +201,7 @@ __device__ void load_shared_image(CParam<T> in, T *local_image, unsigned ix,
 template<typename T, int arc_length>
 __global__ void locate_features(CParam<T> in, float *score, const float thr,
                                 const unsigned edge,
-                                cudaTextureObject_t luTable) {
+                                const unsigned char *luTable) {
     unsigned ix = threadIdx.x;
     unsigned iy = threadIdx.y;
     unsigned bx = blockDim.x;

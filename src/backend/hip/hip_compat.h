@@ -118,25 +118,6 @@
 #define cudaRuntimeGetVersion           hipRuntimeGetVersion
 #define cudaErrorDeviceAlreadyInUse     hipErrorContextAlreadyInUse
 
-// Texture-object surface (LookupTable1D + interp). hipTextureObject_t and the
-// resource/texture descriptor structs map 1:1; the linear-filter rejection on
-// float element-read textures is handled at the bind site, not here.
-#define cudaTextureObject_t             hipTextureObject_t
-#define cudaTextureDesc                 hipTextureDesc
-#define cudaResourceDesc                hipResourceDesc
-#define cudaCreateTextureObject         hipCreateTextureObject
-#define cudaDestroyTextureObject        hipDestroyTextureObject
-#define cudaResourceTypeLinear          hipResourceTypeLinear
-#define cudaReadModeElementType         hipReadModeElementType
-#define cudaChannelFormatKindFloat      hipChannelFormatKindFloat
-#define cudaChannelFormatKindSigned     hipChannelFormatKindSigned
-#define cudaChannelFormatKindUnsigned   hipChannelFormatKindUnsigned
-#define cudaCreateChannelDesc           hipCreateChannelDesc
-#define cudaChannelFormatDesc           hipChannelFormatDesc
-#define cudaFilterModePoint             hipFilterModePoint
-#define cudaFilterModeLinear            hipFilterModeLinear
-#define cudaAddressModeClamp            hipAddressModeClamp
-
 // GL/graphics interop (compiled but unused in the headless build; HIP provides
 // the full surface so the graphics sources link).
 #define cudaGraphicsResource            hipGraphicsResource

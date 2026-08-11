@@ -32,18 +32,14 @@ static const int THREADS_Y = 16;
 // algorithm is finished and the kernel ends.
 __device__ static int continue_flag = 1;
 
-// Wrapper function for texture fetch
+// Wrapper function for the equivalency map read. This is a point read with no
+// filtering, so it goes straight to global memory rather than through a texture
+// object: CDNA3 and newer devices (gfx942 onwards) have no fixed-function
+// texture path and their HIP headers mark the texture fetch builtins
+// unavailable. The double case always read the map directly anyway.
 template<typename T>
 static inline __device__ T fetch(const int n,
-                                 arrayfire::cuda::Param<T> equiv_map,
-                                 cudaTextureObject_t tex) {
-    return tex1Dfetch<T>(tex, n);
-}
-
-template<>
-__device__ inline double fetch<double>(const int n,
-                                       arrayfire::cuda::Param<double> equiv_map,
-                                       cudaTextureObject_t tex) {
+                                 arrayfire::cuda::Param<T> equiv_map) {
     return equiv_map.ptr[n];
 }
 
@@ -122,8 +118,7 @@ struct warp_count {
 // Number of elements to handle per thread in each dimension
 // int n_per_thread = 2; // 2x2 per thread = 4 total elems per thread
 template<typename T, int block_dim, int n_per_thread, bool full_conn>
-__global__ static void update_equiv(arrayfire::cuda::Param<T> equiv_map,
-                                    const cudaTextureObject_t tex) {
+__global__ static void update_equiv(arrayfire::cuda::Param<T> equiv_map) {
     // Basic coordinates
     const int base_x = (blockIdx.x * blockDim.x * n_per_thread) + threadIdx.x;
     const int base_y = (blockIdx.y * blockDim.y * n_per_thread) + threadIdx.y;
@@ -160,7 +155,7 @@ __global__ static void update_equiv(arrayfire::cuda::Param<T> equiv_map,
 
             // Get the label for this pixel if we're  in bounds
             const T orig_label =
-                (x < width && y < height) ? fetch<T>(n, equiv_map, tex) : (T)0;
+                (x < width && y < height) ? fetch<T>(n, equiv_map) : (T)0;
             s_tile[ty][tx] = orig_label;
 
             // Find the lowest label of the nearest valid pixel
@@ -174,47 +169,43 @@ __global__ static void update_equiv(arrayfire::cuda::Param<T> equiv_map,
                 const int west_x  = max(x, 1) - 1;
 
                 // Check bottom
-                best_label[tid_i] =
-                    relabel(best_label[tid_i],
-                            fetch((south_y)*width + x, equiv_map, tex));
+                best_label[tid_i] = relabel(
+                    best_label[tid_i], fetch((south_y)*width + x, equiv_map));
 
                 // Check right neighbor
-                best_label[tid_i] =
-                    relabel(best_label[tid_i],
-                            fetch(y * width + east_x, equiv_map, tex));
+                best_label[tid_i] = relabel(
+                    best_label[tid_i], fetch(y * width + east_x, equiv_map));
 
                 // Check left neighbor
-                best_label[tid_i] =
-                    relabel(best_label[tid_i],
-                            fetch(y * width + west_x, equiv_map, tex));
+                best_label[tid_i] = relabel(
+                    best_label[tid_i], fetch(y * width + west_x, equiv_map));
 
                 // Check top neighbor
-                best_label[tid_i] =
-                    relabel(best_label[tid_i],
-                            fetch((north_y)*width + x, equiv_map, tex));
+                best_label[tid_i] = relabel(
+                    best_label[tid_i], fetch((north_y)*width + x, equiv_map));
 
                 if (full_conn) {
                     // Check NW corner
-                    best_label[tid_i] = relabel(
-                        best_label[tid_i],
-                        fetch((north_y)*width + west_x, equiv_map, tex));
+                    best_label[tid_i] =
+                        relabel(best_label[tid_i],
+                                fetch((north_y)*width + west_x, equiv_map));
 
                     // Check NE corner
-                    best_label[tid_i] = relabel(
-                        best_label[tid_i],
-                        fetch((north_y)*width + east_x, equiv_map, tex));
+                    best_label[tid_i] =
+                        relabel(best_label[tid_i],
+                                fetch((north_y)*width + east_x, equiv_map));
 
                     // Check SW corner
-                    best_label[tid_i] = relabel(
-                        best_label[tid_i],
-                        fetch((south_y)*width + west_x, equiv_map, tex));
+                    best_label[tid_i] =
+                        relabel(best_label[tid_i],
+                                fetch((south_y)*width + west_x, equiv_map));
 
                     // Check SE corner
-                    best_label[tid_i] = relabel(
-                        best_label[tid_i],
-                        fetch((south_y)*width + east_x, equiv_map, tex));
+                    best_label[tid_i] =
+                        relabel(best_label[tid_i],
+                                fetch((south_y)*width + east_x, equiv_map));
                 }  // if connectivity == 8
-            }      // if orig_label != 0
+            }  // if orig_label != 0
 
             // Process the equivalency list.
             T last_label = orig_label;
@@ -222,7 +213,7 @@ __global__ static void update_equiv(arrayfire::cuda::Param<T> equiv_map,
 
             while (best_label[tid_i] != (T)0 && new_label < last_label) {
                 last_label = new_label;
-                new_label  = fetch(new_label - (T)1, equiv_map, tex);
+                new_label  = fetch(new_label - (T)1, equiv_map);
             }
 
             if (orig_label != new_label) {
@@ -348,8 +339,7 @@ struct clamp_to_one : public thrust::unary_function<T, T> {
 };
 
 template<typename T, bool full_conn, int n_per_thread>
-void regions(arrayfire::cuda::Param<T> out, arrayfire::cuda::CParam<char> in,
-             cudaTextureObject_t tex) {
+void regions(arrayfire::cuda::Param<T> out, arrayfire::cuda::CParam<char> in) {
     using arrayfire::cuda::getActiveStream;
     dim3 threads(THREADS_X, THREADS_Y);
 
@@ -371,7 +361,7 @@ void regions(arrayfire::cuda::Param<T> out, arrayfire::cuda::CParam<char> in,
                                     cudaMemcpyHostToDevice, getActiveStream()));
 
         CUDA_LAUNCH((update_equiv<T, 16, n_per_thread, full_conn>), blocks,
-                    threads, out, tex);
+                    threads, out);
 
         POST_LAUNCH_CHECK();
 
