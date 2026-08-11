@@ -14,12 +14,13 @@
 namespace arrayfire {
 namespace cuda {
 
-// The lookup tables handed to this class are a few dozen entries and are only
-// ever point sampled, so they are read straight out of global memory instead of
-// through a texture object. CDNA3 and newer devices (gfx942 onwards) drop the
-// fixed-function texture path and their HIP headers mark the texture fetch
-// builtins unavailable, so a texture object here would not compile there and
-// would buy nothing on the devices where it does.
+// The lookup tables handed to this class are only ever point sampled: no
+// filtering, no normalized coordinates and no address modes. That, and not
+// their size, is what lets them be read straight out of global memory instead
+// of through a texture object, with identical results. It is also required
+// here: CDNA3 and newer devices (gfx942 onwards) drop the fixed-function
+// texture path and their HIP headers mark the texture fetch builtins
+// unavailable, so a texture object would not compile for those targets.
 template<typename T>
 class LookupTable1D {
    public:
