@@ -14,12 +14,6 @@
 # (cuComplex.h / math_constants.h / vector_types.h / cuda_fp16.h) are replaced by
 # HIP shims under nvrtc_shims/ so the embedded-header blobs carry HIP-valid
 # content under the same variable names compile_module.cpp expects.
-#
-# STATUS: headless-core bring-up in progress. The hipRTC engine is proven
-# (agent_space/af_hiprtc_poc) and ported; the per-file CUDA-library symbol
-# translation (hipBLAS/hipSOLVER/hipSPARSE/hipFFT/rocThrust) and the device_manager
-# NVML port are the remaining work before the full source list compiles. See
-# projects/arrayfire/notes.md for the file-by-file roadmap.
 
 include(FileToString)
 include(InternalUtils)

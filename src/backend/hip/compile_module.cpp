@@ -104,8 +104,8 @@ using std::chrono::milliseconds;
 // hipRTC compiles directly to a loadable gfx code object (hiprtcGetCode), so the
 // PTX + cuLink* assemble step does not exist here: hiprtcGetCode feeds straight
 // into hipModuleLoadData. The arch flag is --offload-arch=<gcnArchName> (feature
-// suffix stripped) rather than --gpu-architecture=compute_XX. Proven end to end
-// in agent_space/af_hiprtc_poc before this port. Three NVRTC->hipRTC deltas:
+// suffix stripped) rather than --gpu-architecture=compute_XX. Three
+// NVRTC->hipRTC deltas:
 //   1. hipRTC rejects an empty-string ("") header source; dummy header bodies
 //      must be a non-empty placeholder.
 //   2. hipRTC rejects --device-as-default-execution-space (device is the default
