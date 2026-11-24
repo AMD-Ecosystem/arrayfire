@@ -270,10 +270,9 @@ SparseArray<T> arithOp(const SparseArray<T> &lhs, const SparseArray<T> &rhs) {
     const int *csrRowPtrB = rhs.getRowIdx().get();
     const int *csrColPtrB = rhs.getColIdx().get();
 
-    int baseC, nnzC = M + 1;
+    int nnzC = M + 1;
 
-    auto nnzDevHostPtr = memAlloc<int>(1);
-    auto outRowIdx     = createValueArray<int>(M + 1, 0);
+    auto outRowIdx = createValueArray<int>(M + 1, 0);
 
     T alpha = scalar<T>(1);
     T beta  = op == af_sub_t ? scalar<T>(-1) : scalar<T>(1);
@@ -290,21 +289,9 @@ SparseArray<T> arithOp(const SparseArray<T> &lhs, const SparseArray<T> &rhs) {
     auto tmpBuffer = memAlloc<char>(pBufferSize);
     CUSPARSE_CHECK(hipsparseXcsrgeam2Nnz(
         sparseHandle(), M, N, ldesc, nnzA, csrRowPtrA, csrColPtrA, rdesc, nnzB,
-        csrRowPtrB, csrColPtrB, odesc, outRowIdx.get(), nnzDevHostPtr.get(),
+        csrRowPtrB, csrColPtrB, odesc, outRowIdx.get(), &nnzC,
         tmpBuffer.get()));
 
-    if (NULL != nnzDevHostPtr) {
-        CUDA_CHECK(hipMemcpyAsync(&nnzC, nnzDevHostPtr.get(), sizeof(int),
-                                  hipMemcpyDeviceToHost, getActiveStream()));
-        CUDA_CHECK(hipStreamSynchronize(cuda::getActiveStream()));
-    } else {
-        CUDA_CHECK(hipMemcpyAsync(&nnzC, outRowIdx.get() + M, sizeof(int),
-                                  hipMemcpyDeviceToHost, getActiveStream()));
-        CUDA_CHECK(hipMemcpyAsync(&baseC, outRowIdx.get(), sizeof(int),
-                                  hipMemcpyDeviceToHost, getActiveStream()));
-        CUDA_CHECK(hipStreamSynchronize(cuda::getActiveStream()));
-        nnzC -= baseC;
-    }
     auto outColIdx = createEmptyArray<int>(nnzC);
     auto outValues = createEmptyArray<T>(nnzC);
 
